@@ -1,0 +1,87 @@
+<html>
+    <head>
+        <title>TestCanvas</title>
+        <style>
+            body {
+                background-color: #eeeeee;
+                font: 30px sans-serif;
+            }
+            .hidden {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="game" width="640" height="480"></canvas>
+    </body>
+    <script>
+        let memory = null;
+        const width = 640;
+        const height = 480;
+        const rgba = 4;
+        const imports = {
+            env: {
+                // jsの乱数をwasmから呼び出す準備
+                random: Math.random,
+                // jsのconsole.logをwasmから呼び出す準備
+                js_console_log: (ptr, size) => {
+                    // wasm間は数値以外はポインタでやり取り
+                    const textBuf = new Uint8Array(memory.buffer, ptr, size);
+                    console.log(memory.buffer);
+                    const message = String.fromCodePoint(...textBuf);
+                    console.log(message)
+                }
+            }
+        };
+        fetch('test.wasm')
+            .then(response => response.arrayBuffer())
+            .then(bytes => WebAssembly.instantiate(bytes, imports))
+            .then(results => start(results.instance.exports));
+        
+        function start(exports) {
+            console.log("js initializing");
+
+            // wasm側のメモリの場所
+            memory = exports.memory;
+
+            // canvasのcontextを取得
+            const context = document.getElementById("game").getContext("2d");
+            // wasmで生成したイメージの出力先
+            const pixels = context.createImageData(width, height);
+
+            // canvasを描くためのバッファ
+            const address = exports.getPixelAddress();
+            const imageBuf = new Uint8Array(memory.buffer, address, width * height * rgba);
+
+            // wasm側の初期化メソッド
+            exports.init();
+
+            // ループの準備
+            const now = window.performance && (
+                performance.now ||
+                performance.mozNow ||
+                performance.msNow ||
+                performance.oNow ||
+                performance.webkitNow
+            );
+            const getTime = function() {
+                return ( now && now.call( performance )) || ( new Date().getTime());
+            }
+            const startTime = getTime();
+
+            // updateのループ
+            let elapsedTime = 0; // 経過時間
+            (function update() {
+                requestAnimationFrame( update );
+                elapsedTime = getTime() - startTime;
+                // wasm側の更新メソッド
+                exports.update();
+
+                // 画面の描画
+//                console.log(memory.buffer);
+                pixels.data.set(imageBuf);
+                context.putImageData(pixels, 0, 0);
+            })();
+        }
+    </script>
+</html>
