@@ -82,6 +82,26 @@ unsafe fn draw_rect(sx: i32, sy: i32, dx: i32, dy: i32, color: &Color) {
     }
 }
 
+unsafe fn draw_back_ground(x: i32, y: i32) {
+    let back_color = Color {
+        red: 238,
+        green: 238,
+        blue: 238,
+        alpha: 255,
+    };
+
+    draw_rect(
+        (x * BLOCK_SIZE) + 20, // 開始位置 * ブロックサイズ + 初期位置
+        (y * BLOCK_SIZE) + 20,
+        (x * BLOCK_SIZE) + BLOCK_SIZE + 20,
+        (y * BLOCK_SIZE) + BLOCK_SIZE + 20,
+        &back_color,
+    )
+}
+
+/// 1ブロックを描画
+/// # Arguments
+/// * x, y はフィールドのx, y座標
 unsafe fn draw_one_block(x: i32, y: i32, color: &Color) {
     // draw frame
     let gray = Color {
@@ -90,11 +110,17 @@ unsafe fn draw_one_block(x: i32, y: i32, color: &Color) {
         blue: 160,
         alpha: 255,
     };
-    draw_rect(x, y, x + BLOCK_SIZE - 1, y + BLOCK_SIZE - 1, &gray);
+    draw_rect(
+        (x * BLOCK_SIZE) + 20, // 開始位置 * ブロックサイズ + 初期位置
+        (y * BLOCK_SIZE) + 20,
+        (x * BLOCK_SIZE) + BLOCK_SIZE + 19,
+        (y * BLOCK_SIZE) + BLOCK_SIZE + 19,
+        &gray,
+    );
 
     // draw inner
-    for j in (y + 1)..(y + BLOCK_SIZE - 1) {
-        for i in (x + 1)..(x + BLOCK_SIZE - 1) {
+    for j in ((y * BLOCK_SIZE) + 21)..((y * BLOCK_SIZE) + BLOCK_SIZE + 19) {
+        for i in ((x * BLOCK_SIZE) + 21)..((x * BLOCK_SIZE) + BLOCK_SIZE + 19) {
             draw_pixel(i, j, color);
         }
     }
@@ -107,7 +133,7 @@ unsafe fn draw_frame() {
         blue: 0,
         alpha: 255,
     };
-    draw_rect(19, 19, 241, 461, &black);
+    draw_rect(19, 19, 240, 460, &black);
 }
 
 unsafe fn draw_block() {
@@ -171,34 +197,33 @@ unsafe fn draw_block() {
         6 => blocks = &I_BLOCK,
         _ => blocks = &T_BLOCK,
     }
+
     let mut y = 0;
-    for y2 in (Y - 2)..(Y + 2) {
+    for y2 in (Y - 2)..(Y + 3) {
         let mut x = 0;
         if 0 <= y2 && y2 < FIELD_Y {
-            /*            for x2 in (X - 2)..(X + 2) {
+            for x2 in (X - 2)..(X + 3) {
                 if 0 <= x2 && x2 < FIELD_X {
-                    let mut color = &cyan;
-                    match blocks[((y * FIELD_X) + x) as usize] {
-                        1 => color = &cyan,
-                        2 => color = &yellow,
-                        3 => color = &green,
-                        4 => color = &red,
-                        5 => color = &blue,
-                        6 => color = &orange,
-                        7 => color = &magenta,
-                        _ => {}
+                    match blocks[((y * 5) + x) as usize] {
+                        1 => draw_one_block(x2, y2, &cyan),
+                        2 => draw_one_block(x2, y2, &yellow),
+                        3 => draw_one_block(x2, y2, &green),
+                        4 => draw_one_block(x2, y2, &red),
+                        5 => draw_one_block(x2, y2, &blue),
+                        6 => draw_one_block(x2, y2, &orange),
+                        7 => draw_one_block(x2, y2, &magenta),
+                        _ => draw_back_ground(x2, y2),
                     }
-                    //                    draw_one_block(x2, y2, color);
                 }
                 x = x + 1;
-            }*/
+            }
         }
         y = y + 1;
     }
 
     // フィールド上のブロックを描画
-    for j in 0..(FIELD_Y - 1) {
-        for i in 0..(FIELD_X - 1) {
+    for j in 0..(FIELD_Y) {
+        for i in 0..(FIELD_X) {
             match FIELD[((j * FIELD_X) + i) as usize] {
                 1 => draw_one_block(i, j, &cyan),
                 2 => draw_one_block(i, j, &yellow),
