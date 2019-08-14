@@ -41,6 +41,28 @@
         function start(exports) {
             console.log("js initializing");
 
+            // キー操作の受付
+            function processKey(key) {
+                switch(key) {
+                    case "ArrowLeft":
+                        exports.move_left();
+                        break;
+                    case "ArrowRight":
+                        exports.move_right();
+                        break;
+                    case "ArrowDown":
+                        exports.move_down();
+                        break;
+                    case "z":
+                        exports.turn_left();
+                        break;
+                    case "x":
+                        exports.turn_right();
+                        break;
+                }
+            }
+            document.addEventListener('keydown', e => processKey(e.key));
+
             // wasm側のメモリの場所
             memory = exports.memory;
 

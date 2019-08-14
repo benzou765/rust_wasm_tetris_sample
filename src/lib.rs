@@ -16,7 +16,7 @@ static mut FIELD: &mut [u8] = &mut [0; (FIELD_X * FIELD_Y) as usize];
 static mut ELAPSED_TIME: i32 = 0;
 
 // 現在所有しているブロックの種類
-static mut BLOCK_TYPE: i32 = 0;
+static mut USER_BLOCK: [u8; 25] = T_BLOCK;
 static mut X: i32 = 5;
 static mut Y: i32 = 0;
 
@@ -42,6 +42,12 @@ const RL_BLOCK: [u8; (5 * 5)] = [
 const I_BLOCK: [u8; (5 * 5)] = [
     0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
 ];
+
+// ブロックの回転。回転行列で計算
+const TURN_0: [i8; 4] = [1, 0, 0, 1];
+const TURN_90: [i8; 4] = [0, -1, 1, 0];
+const TURN_180: [i8; 4] = [-1, 0, 0, -1];
+const TURN_270: [i8; 4] = [0, 1, -1, 0];
 
 // js側のメソッド
 extern "C" {
@@ -90,13 +96,11 @@ unsafe fn draw_back_ground(x: i32, y: i32) {
         alpha: 255,
     };
 
-    draw_rect(
-        (x * BLOCK_SIZE) + 20, // 開始位置 * ブロックサイズ + 初期位置
-        (y * BLOCK_SIZE) + 20,
-        (x * BLOCK_SIZE) + BLOCK_SIZE + 20,
-        (y * BLOCK_SIZE) + BLOCK_SIZE + 20,
-        &back_color,
-    )
+    for j in ((y * BLOCK_SIZE) + 20)..((y * BLOCK_SIZE) + BLOCK_SIZE + 20) {
+        for i in ((x * BLOCK_SIZE) + 20)..((x * BLOCK_SIZE) + BLOCK_SIZE + 20) {
+            draw_pixel(i, j, &back_color);
+        }
+    }
 }
 
 /// 1ブロックを描画
@@ -134,6 +138,11 @@ unsafe fn draw_frame() {
         alpha: 255,
     };
     draw_rect(19, 19, 240, 460, &black);
+    for j in 0..FIELD_Y {
+        for i in 0..FIELD_X {
+            draw_back_ground(i, j);
+        }
+    }
 }
 
 unsafe fn draw_block() {
@@ -187,24 +196,13 @@ unsafe fn draw_block() {
         alpha: 255,
     };
     // ユーザーのブロックを描画
-    let mut blocks: &[u8] = &O_BLOCK;
-    match BLOCK_TYPE {
-        1 => blocks = &O_BLOCK,
-        2 => blocks = &N_BLOCK,
-        3 => blocks = &RN_BLOCK,
-        4 => blocks = &L_BLOCK,
-        5 => blocks = &RL_BLOCK,
-        6 => blocks = &I_BLOCK,
-        _ => blocks = &T_BLOCK,
-    }
-
     let mut y = 0;
     for y2 in (Y - 2)..(Y + 3) {
         let mut x = 0;
         if 0 <= y2 && y2 < FIELD_Y {
             for x2 in (X - 2)..(X + 3) {
                 if 0 <= x2 && x2 < FIELD_X {
-                    match blocks[((y * 5) + x) as usize] {
+                    match USER_BLOCK[((y * 5) + x) as usize] {
                         1 => draw_one_block(x2, y2, &cyan),
                         2 => draw_one_block(x2, y2, &yellow),
                         3 => draw_one_block(x2, y2, &green),
@@ -212,7 +210,7 @@ unsafe fn draw_block() {
                         5 => draw_one_block(x2, y2, &blue),
                         6 => draw_one_block(x2, y2, &orange),
                         7 => draw_one_block(x2, y2, &magenta),
-                        _ => draw_back_ground(x2, y2),
+                        _ => {}
                     }
                 }
                 x = x + 1;
@@ -241,13 +239,13 @@ unsafe fn draw_block() {
 unsafe fn create_block() {
     let val = (random() * BLOCK_TYPE_NUM as f64).floor() as i32;
     match val {
-        1 => BLOCK_TYPE = 1,
-        2 => BLOCK_TYPE = 2,
-        3 => BLOCK_TYPE = 3,
-        4 => BLOCK_TYPE = 4,
-        5 => BLOCK_TYPE = 5,
-        6 => BLOCK_TYPE = 6,
-        _ => BLOCK_TYPE = 0,
+        1 => USER_BLOCK = O_BLOCK,
+        2 => USER_BLOCK = N_BLOCK,
+        3 => USER_BLOCK = RN_BLOCK,
+        4 => USER_BLOCK = L_BLOCK,
+        5 => USER_BLOCK = RL_BLOCK,
+        6 => USER_BLOCK = I_BLOCK,
+        _ => USER_BLOCK = T_BLOCK,
     }
     // 座標の初期化
     X = 5;
@@ -283,3 +281,63 @@ pub unsafe extern "C" fn update() {
     draw_frame();
     draw_block();
 }
+
+/// block move left
+#[no_mangle]
+pub unsafe extern "C" fn move_left() {
+    // ユーザーのブロックの大きさに応じて移動距離を計算
+    let mut edge_x = 0;
+    for x in 0..5 {
+        for y in 0..5 {
+            if USER_BLOCK[(y * 5) + x] > 0 {
+                edge_x = x as i32;
+                break;
+            }
+        }
+        if edge_x != 0 {
+            break;
+        }
+    }
+
+    if 0 < X + (edge_x - 2) {
+        X = X - 1
+    }
+}
+
+/// block move right
+#[no_mangle]
+pub unsafe extern "C" fn move_right() {
+    // ユーザーのブロックの大きさに応じて移動距離を計算
+    let mut edge_x = 0;
+    for x in 0..5 {
+        for y in 0..5 {
+            if USER_BLOCK[(y * 5) + (4 - x)] > 0 {
+                edge_x = (4 - x) as i32;
+                break;
+            }
+        }
+        if edge_x != 0 {
+            break;
+        }
+    }
+
+    if X < (FIELD_X + (2 - edge_x) - 1) {
+        X = X + 1
+    }
+}
+
+/// block move down
+#[no_mangle]
+pub unsafe extern "C" fn move_down() {
+    if 0 < Y && Y < FIELD_Y {
+        Y = Y + 1
+    }
+}
+
+/// block turn left
+#[no_mangle]
+pub unsafe extern "C" fn turn_left() {}
+
+/// block turn right
+#[no_mangle]
+pub unsafe extern "C" fn turn_right() {}
