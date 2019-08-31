@@ -304,10 +304,15 @@ unsafe fn fix_block() {
 // ブロックを1行削除して、1段落とす
 unsafe fn clear_block(line: i32) {
     // 該当行のクリア
-
+    for x in 0..FIELD_X {
+        FIELD[(line * FIELD_X + x) as usize] = 0;
+    }
     // 1段下げる
     let mut index = line - 1;
     while index >= 0 {
+        for x in 0..FIELD_X {
+            FIELD[((index + 1) * FIELD_X + x) as usize] = FIELD[(index * FIELD_X + x) as usize];
+        }
         index = index - 1;
     }
 }
@@ -317,13 +322,15 @@ unsafe fn clear_block(line: i32) {
 unsafe fn check_line() -> i32 {
     let mut clear_num = 0;
     for line in 0..FIELD_Y {
-        let mut counter = 0;
-        while counter < FIELD_X {
-            if FIELD[(line * FIELD_X + counter) as usize] > 0 {
-                counter = counter + 1;
+        let mut x = 0;
+        let mut block_num = 0;
+        while x < FIELD_X {
+            if FIELD[(line * FIELD_X + x) as usize] > 0 {
+                block_num = block_num + 1;
             }
+            x = x + 1;
         }
-        if counter == (FIELD_X - 1) {
+        if block_num == FIELD_X {
             clear_block(line);
             clear_num = clear_num + 1;
         }
@@ -368,7 +375,7 @@ pub unsafe extern "C" fn update() {
                 console_log("GAME OVER")
             } else {
                 fix_block();
-                //            check_line();
+                check_line();
                 create_block();
             }
         }
@@ -404,7 +411,7 @@ pub unsafe extern "C" fn move_down() {
             console_log("GAME OVER")
         } else {
             fix_block();
-            //            check_line();
+            check_line();
             create_block();
         }
     }
