@@ -61,6 +61,7 @@ fn console_log(message: &str) {
     unsafe { js_console_log(message.as_ptr(), message.len()) }
 }
 
+// 描画のRGBA構造体
 struct Color {
     red: u8,
     green: u8,
@@ -68,6 +69,9 @@ struct Color {
     alpha: u8,
 }
 
+/// 1ピクセルを描画
+/// * sx, sy - ピクセル座標
+/// * color - RGBA構造体。色情報を保持
 unsafe fn draw_pixel(x: i32, y: i32, color: &Color) {
     IMAGE_BUFFER[((y * WIDTH + x) * RGBA) as usize] = color.red;
     IMAGE_BUFFER[((y * WIDTH + x) * RGBA + 1) as usize] = color.green;
@@ -75,6 +79,11 @@ unsafe fn draw_pixel(x: i32, y: i32, color: &Color) {
     IMAGE_BUFFER[((y * WIDTH + x) * RGBA + 3) as usize] = color.alpha;
 }
 
+/// 四角を描画
+/// # Arguments
+/// * sx, sy - 描き始めのピクセル座標
+/// * dx, dy - 描き終わりのピクセル座標
+/// * color - RGBA構造体。色情報を保持
 unsafe fn draw_rect(sx: i32, sy: i32, dx: i32, dy: i32, color: &Color) {
     for x in sx..dx {
         // top
@@ -90,6 +99,9 @@ unsafe fn draw_rect(sx: i32, sy: i32, dx: i32, dy: i32, color: &Color) {
     }
 }
 
+/// 背景を描画
+/// # Arguments
+/// * x, y はフィールドのx, y座標
 unsafe fn draw_back_ground(x: i32, y: i32) {
     let back_color = Color {
         red: 238,
@@ -132,6 +144,7 @@ unsafe fn draw_one_block(x: i32, y: i32, color: &Color) {
     }
 }
 
+/// ゲームの外枠を描画
 unsafe fn draw_frame() {
     let black = Color {
         red: 0,
@@ -139,6 +152,7 @@ unsafe fn draw_frame() {
         blue: 0,
         alpha: 255,
     };
+    // ゲームフィールドの描画
     draw_rect(19, 19, 240, 460, &black);
     for j in 0..FIELD_Y {
         for i in 0..FIELD_X {
@@ -147,6 +161,7 @@ unsafe fn draw_frame() {
     }
 }
 
+/// ゲーム上にあるブロックを描画
 unsafe fn draw_block() {
     // I_BLOCK
     let cyan = Color {
@@ -238,7 +253,7 @@ unsafe fn draw_block() {
     }
 }
 
-// 初期ブロックの生成
+/// 初期ブロックの生成
 unsafe fn create_block() {
     let val = (random() * BLOCK_TYPE_NUM as f64).floor() as i32;
     match val {
@@ -255,9 +270,10 @@ unsafe fn create_block() {
     Y = 0;
 }
 
-// 指定先に移動可能か
-// x: 移動先のフィールド上のX座標
-// y: 移動先のフィールド上のY座標
+/// 指定先に移動可能か
+/// # Arguments
+/// x - 移動先のフィールド上のX座標
+/// y - 移動先のフィールド上のY座標
 unsafe fn can_move(dist_x: i32, dist_y: i32) -> bool {
     for y in 0..5 {
         for x in 0..5 {
@@ -288,7 +304,7 @@ unsafe fn can_move(dist_x: i32, dist_y: i32) -> bool {
     true
 }
 
-// ブロックを固定する
+/// ブロックを固定する
 unsafe fn fix_block() {
     for y in 0..5 {
         for x in 0..5 {
@@ -301,7 +317,9 @@ unsafe fn fix_block() {
     }
 }
 
-// ブロックを1行削除して、1段落とす
+/// ブロックを1行削除して、1段落とす
+/// # Arguments
+/// * line - 削除する行番号
 unsafe fn clear_block(line: i32) {
     // 該当行のクリア
     for x in 0..FIELD_X {
@@ -317,8 +335,8 @@ unsafe fn clear_block(line: i32) {
     }
 }
 
-// 消せるブロックがないか確認
-// return 消した行数
+/// 消せるブロックがないか確認
+/// # Return 消した行数
 unsafe fn check_line() -> i32 {
     let mut clear_num = 0;
     for line in 0..FIELD_Y {
@@ -338,16 +356,29 @@ unsafe fn check_line() -> i32 {
     clear_num
 }
 
-// ブロックが画面外に出ていないか確認
+/// ブロックが画面外に出ていないか確認
+/// Return 画面外にブロックが出ているか判定
 unsafe fn check_over_block() -> bool {
+    for y in 0..5 {
+        for x in 0..5 {
+            if USER_BLOCK[(y * 5 + x) as usize] > 0 {
+                let field_py = Y + y - 2;
+                if field_py < 0 {
+                    return true;
+                }
+            }
+        }
+    }
     false
 }
 
-// ブロックの落下
+/// ブロックの落下
 unsafe fn down_block() {
     Y = Y + 1;
 }
 
+/// 描画するメモリ位置を取得
+/// Return 描画で使用するRust上のメモリポインタ位置
 #[no_mangle]
 pub unsafe extern "C" fn getPixelAddress() -> *const u8 {
     &IMAGE_BUFFER[0]
@@ -423,6 +454,7 @@ pub unsafe extern "C" fn turn_left() {
     let clone_block = USER_BLOCK.clone();
     let mut i = 0;
     let mut moved_block = [0; 25];
+    // 回転後のブロック位置を取得
     while i < 25 {
         moved_block[TURN_LEFT[i]] = clone_block[i];
         i = i + 1;
@@ -470,6 +502,7 @@ pub unsafe extern "C" fn turn_right() {
     let clone_block = USER_BLOCK.clone();
     let mut moved_block = [0; 25];
     let mut i = 0;
+    // 回転後のブロック位置を取得
     while i < 25 {
         moved_block[TURN_RIGHT[i]] = clone_block[i];
         i = i + 1;
