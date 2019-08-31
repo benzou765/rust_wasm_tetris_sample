@@ -21,33 +21,35 @@ static mut X: i32 = 5;
 static mut Y: i32 = 0;
 
 // テトリスのブロック構成
-const T_BLOCK: [u8; (5 * 5)] = [
+const T_BLOCK: [u8; 25] = [
     0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const O_BLOCK: [u8; (5 * 5)] = [
+const O_BLOCK: [u8; 25] = [
     0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const N_BLOCK: [u8; (5 * 5)] = [
+const N_BLOCK: [u8; 25] = [
     0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const RN_BLOCK: [u8; (5 * 5)] = [
+const RN_BLOCK: [u8; 25] = [
     0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const L_BLOCK: [u8; (5 * 5)] = [
+const L_BLOCK: [u8; 25] = [
     0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const RL_BLOCK: [u8; (5 * 5)] = [
+const RL_BLOCK: [u8; 25] = [
     0, 0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const I_BLOCK: [u8; (5 * 5)] = [
+const I_BLOCK: [u8; 25] = [
     0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
 ];
 
 // ブロックの回転。回転行列で計算
-const TURN_0: [i8; 4] = [1, 0, 0, 1];
-const TURN_90: [i8; 4] = [0, -1, 1, 0];
-const TURN_180: [i8; 4] = [-1, 0, 0, -1];
-const TURN_270: [i8; 4] = [0, 1, -1, 0];
+const TURN_RIGHT: [usize; 25] = [
+    4, 9, 14, 19, 24, 3, 8, 13, 18, 23, 2, 7, 12, 17, 22, 1, 6, 11, 16, 21, 0, 5, 10, 15, 20,
+];
+const TURN_LEFT: [usize; 25] = [
+    20, 15, 10, 5, 0, 21, 16, 11, 6, 1, 22, 17, 12, 7, 2, 23, 18, 13, 8, 3, 24, 19, 14, 9, 4,
+];
 
 // js側のメソッド
 extern "C" {
@@ -236,6 +238,7 @@ unsafe fn draw_block() {
     }
 }
 
+// 初期ブロックの生成
 unsafe fn create_block() {
     let val = (random() * BLOCK_TYPE_NUM as f64).floor() as i32;
     match val {
@@ -252,6 +255,88 @@ unsafe fn create_block() {
     Y = 0;
 }
 
+// 指定先に移動可能か
+// x: 移動先のフィールド上のX座標
+// y: 移動先のフィールド上のY座標
+unsafe fn can_move(dist_x: i32, dist_y: i32) -> bool {
+    for y in 0..5 {
+        for x in 0..5 {
+            if USER_BLOCK[(y * 5 + x) as usize] > 0 {
+                // フィールドの下端に重なる部分はないか
+                if (dist_y + y - 2) == FIELD_Y {
+                    return false;
+                }
+                // フィールドの左端に重なる部分はないか
+                if (dist_x + x - 2) == -1 {
+                    return false;
+                }
+                // フィールドの右端に重なる部分はないか
+                if (dist_x + x - 2) == FIELD_X {
+                    return false;
+                }
+                // フィールドブロックと重なる場所はないか
+                let field_px = dist_x + x - 2;
+                let field_py = dist_y + y - 2;
+                if 0 <= field_px && field_px < FIELD_X && 0 <= field_py && field_py < FIELD_Y {
+                    if FIELD[(field_py * FIELD_X + field_px) as usize] > 0 {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    true
+}
+
+// ブロックを固定する
+unsafe fn fix_block() {
+    for y in 0..5 {
+        for x in 0..5 {
+            if USER_BLOCK[y * 5 + x] > 0 {
+                let px = X + (x as i32) - 2;
+                let py = Y + (y as i32) - 2;
+                FIELD[(py * FIELD_X + px) as usize] = USER_BLOCK[y * 5 + x];
+            }
+        }
+    }
+}
+
+// ブロックを1行削除して、1段落とす
+unsafe fn clear_block(line: i32) {
+    // 該当行のクリア
+
+    // 1段下げる
+    let mut index = line - 1;
+    while index >= 0 {
+        index = index - 1;
+    }
+}
+
+// 消せるブロックがないか確認
+// return 消した行数
+unsafe fn check_line() -> i32 {
+    let mut clear_num = 0;
+    for line in 0..FIELD_Y {
+        let mut counter = 0;
+        while counter < FIELD_X {
+            if FIELD[(line * FIELD_X + counter) as usize] > 0 {
+                counter = counter + 1;
+            }
+        }
+        if counter == (FIELD_X - 1) {
+            clear_block(line);
+            clear_num = clear_num + 1;
+        }
+    }
+    clear_num
+}
+
+// ブロックが画面外に出ていないか確認
+unsafe fn check_over_block() -> bool {
+    false
+}
+
+// ブロックの落下
 unsafe fn down_block() {
     Y = Y + 1;
 }
@@ -276,7 +361,17 @@ pub unsafe extern "C" fn init() {
 pub unsafe extern "C" fn update() {
     ELAPSED_TIME = ELAPSED_TIME + 1;
     if ELAPSED_TIME % 60 == 0 {
-        down_block();
+        if can_move(X, Y + 1) {
+            down_block();
+        } else {
+            if check_over_block() {
+                console_log("GAME OVER")
+            } else {
+                fix_block();
+                //            check_line();
+                create_block();
+            }
+        }
     }
     draw_frame();
     draw_block();
@@ -285,21 +380,7 @@ pub unsafe extern "C" fn update() {
 /// block move left
 #[no_mangle]
 pub unsafe extern "C" fn move_left() {
-    // ユーザーのブロックの大きさに応じて移動距離を計算
-    let mut edge_x = 0;
-    for x in 0..5 {
-        for y in 0..5 {
-            if USER_BLOCK[(y * 5) + x] > 0 {
-                edge_x = x as i32;
-                break;
-            }
-        }
-        if edge_x != 0 {
-            break;
-        }
-    }
-
-    if 0 < X + (edge_x - 2) {
+    if can_move(X - 1, Y) {
         X = X - 1
     }
 }
@@ -307,21 +388,8 @@ pub unsafe extern "C" fn move_left() {
 /// block move right
 #[no_mangle]
 pub unsafe extern "C" fn move_right() {
-    // ユーザーのブロックの大きさに応じて移動距離を計算
-    let mut edge_x = 0;
-    for x in 0..5 {
-        for y in 0..5 {
-            if USER_BLOCK[(y * 5) + (4 - x)] > 0 {
-                edge_x = (4 - x) as i32;
-                break;
-            }
-        }
-        if edge_x != 0 {
-            break;
-        }
-    }
-
-    if X < (FIELD_X + (2 - edge_x) - 1) {
+    // フィールドの右端に接している
+    if can_move(X + 1, Y) {
         X = X + 1
     }
 }
@@ -329,15 +397,109 @@ pub unsafe extern "C" fn move_right() {
 /// block move down
 #[no_mangle]
 pub unsafe extern "C" fn move_down() {
-    if 0 < Y && Y < FIELD_Y {
-        Y = Y + 1
+    if can_move(X, Y + 1) {
+        down_block();
+    } else {
+        if check_over_block() {
+            console_log("GAME OVER")
+        } else {
+            fix_block();
+            //            check_line();
+            create_block();
+        }
     }
 }
 
 /// block turn left
 #[no_mangle]
-pub unsafe extern "C" fn turn_left() {}
+pub unsafe extern "C" fn turn_left() {
+    let clone_block = USER_BLOCK.clone();
+    let mut i = 0;
+    let mut moved_block = [0; 25];
+    while i < 25 {
+        moved_block[TURN_LEFT[i]] = clone_block[i];
+        i = i + 1;
+    }
+    // 回転後の位置に移動可能かチェック
+    let mut can_turn = true;
+    for y in 0..5 {
+        for x in 0..5 {
+            if moved_block[(y * 5 + x) as usize] > 0 {
+                // フィールドの下端に重なる部分はないか
+                if (Y + y - 2) == FIELD_Y {
+                    can_turn = false;
+                }
+                // フィールドの左端に重なる部分はないか
+                if (X + x - 2) == -1 {
+                    can_turn = false;
+                }
+                // フィールドの右端に重なる部分はないか
+                if (X + x - 2) == FIELD_X {
+                    can_turn = false;
+                }
+                // フィールドブロックと重なる場所はないか
+                let field_px = X + x - 2;
+                let field_py = Y + y - 2;
+                if 0 <= field_px && field_px < FIELD_X && 0 <= field_py && field_py < FIELD_Y {
+                    if FIELD[(field_py * FIELD_X + field_px) as usize] > 0 {
+                        can_turn = false;
+                    }
+                }
+            }
+        }
+    }
+    if can_turn {
+        i = 0;
+        while i < 25 {
+            USER_BLOCK[TURN_LEFT[i]] = clone_block[i];
+            i = i + 1;
+        }
+    }
+}
 
 /// block turn right
 #[no_mangle]
-pub unsafe extern "C" fn turn_right() {}
+pub unsafe extern "C" fn turn_right() {
+    let clone_block = USER_BLOCK.clone();
+    let mut moved_block = [0; 25];
+    let mut i = 0;
+    while i < 25 {
+        moved_block[TURN_RIGHT[i]] = clone_block[i];
+        i = i + 1;
+    }
+    // 回転後の位置に移動可能かチェック
+    let mut can_turn = true;
+    for y in 0..5 {
+        for x in 0..5 {
+            if moved_block[(y * 5 + x) as usize] > 0 {
+                // フィールドの下端に重なる部分はないか
+                if (Y + y - 2) == FIELD_Y {
+                    can_turn = false;
+                }
+                // フィールドの左端に重なる部分はないか
+                if (X + x - 2) == -1 {
+                    can_turn = false;
+                }
+                // フィールドの右端に重なる部分はないか
+                if (X + x - 2) == FIELD_X {
+                    can_turn = false;
+                }
+                // フィールドブロックと重なる場所はないか
+                let field_px = X + x - 2;
+                let field_py = Y + y - 2;
+                if 0 <= field_px && field_px < FIELD_X && 0 <= field_py && field_py < FIELD_Y {
+                    if FIELD[(field_py * FIELD_X + field_px) as usize] > 0 {
+                        can_turn = false;
+                    }
+                }
+            }
+        }
+    }
+    if can_turn {
+        i = 0;
+        while i < 25 {
+            USER_BLOCK[TURN_RIGHT[i]] = clone_block[i];
+            i = i + 1;
+        }
+    }
+}

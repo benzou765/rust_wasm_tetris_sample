@@ -27,7 +27,6 @@
                 js_console_log: (ptr, size) => {
                     // wasm間は数値以外はポインタでやり取り
                     const textBuf = new Uint8Array(memory.buffer, ptr, size);
-                    console.log(memory.buffer);
                     const message = String.fromCodePoint(...textBuf);
                     console.log(message)
                 }
@@ -99,8 +98,10 @@
                 // wasm側の更新メソッド
                 exports.update();
 
+                // メモリを再定義し直すことで、JS側のメモリが破壊されても、復旧させることができる??
+                // see https://github.com/emscripten-core/emscripten/issues/6747
+                const imageBuf = new Uint8Array(memory.buffer, address, width * height * rgba);
                 // 画面の描画
-//                console.log(memory.buffer);
                 pixels.data.set(imageBuf);
                 context.putImageData(pixels, 0, 0);
             })();
