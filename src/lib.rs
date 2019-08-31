@@ -7,6 +7,8 @@ const BLOCK_SIZE: i32 = 22;
 const FIELD_X: i32 = 10;
 const FIELD_Y: i32 = 20;
 const BLOCK_TYPE_NUM: i32 = 7;
+const USER_FX: i32 = 5;
+const USER_FY: i32 = 5;
 
 // イメージを保存するメモリ
 static mut IMAGE_BUFFER: &mut [u8] = &mut [0; (WIDTH * HEIGHT * RGBA) as usize];
@@ -16,39 +18,39 @@ static mut FIELD: &mut [u8] = &mut [0; (FIELD_X * FIELD_Y) as usize];
 static mut ELAPSED_TIME: i32 = 0;
 
 // 現在所有しているブロックの種類
-static mut USER_BLOCK: [u8; 25] = [0; 25];
-static mut NEXT_BLOCK: [u8; 25] = [0; 25];
+static mut USER_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [0; (USER_FX * USER_FY) as usize];
+static mut NEXT_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [0; (USER_FX * USER_FY) as usize];
 static mut X: i32 = 5;
 static mut Y: i32 = 0;
 
 // テトリスのブロック構成
-const T_BLOCK: [u8; 25] = [
+const T_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [
     0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const O_BLOCK: [u8; 25] = [
+const O_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [
     0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const N_BLOCK: [u8; 25] = [
+const N_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [
     0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const RN_BLOCK: [u8; 25] = [
+const RN_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [
     0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const L_BLOCK: [u8; 25] = [
+const L_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const RL_BLOCK: [u8; 25] = [
+const RL_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0,
 ];
-const I_BLOCK: [u8; 25] = [
+const I_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [
     0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
 ];
 
 // ブロックの回転。回転行列で計算
-const TURN_RIGHT: [usize; 25] = [
+const TURN_RIGHT: [usize; (USER_FX * USER_FY) as usize] = [
     4, 9, 14, 19, 24, 3, 8, 13, 18, 23, 2, 7, 12, 17, 22, 1, 6, 11, 16, 21, 0, 5, 10, 15, 20,
 ];
-const TURN_LEFT: [usize; 25] = [
+const TURN_LEFT: [usize; (USER_FX * USER_FY) as usize] = [
     20, 15, 10, 5, 0, 21, 16, 11, 6, 1, 22, 17, 12, 7, 2, 23, 18, 13, 8, 3, 24, 19, 14, 9, 4,
 ];
 
@@ -209,8 +211,8 @@ unsafe fn draw_frame() {
     }
     // ネクストブロックの枠描画
     draw_rect(259, 19, 370, 130, &black);
-    for j in 0..5 {
-        for i in 0..5 {
+    for j in 0..USER_FY {
+        for i in 0..USER_FX {
             draw_next_back_ground(i, j);
         }
     }
@@ -268,12 +270,12 @@ unsafe fn draw_block() {
         alpha: 255,
     };
     // ユーザーのブロックを描画
-    for y in 0..5 {
-        for x in 0..5 {
+    for y in 0..USER_FY {
+        for x in 0..USER_FX {
             let field_px = X + x - 2;
             let field_py = Y + y - 2;
             if 0 <= field_px && field_px < FIELD_X && 0 <= field_py && field_py < FIELD_Y {
-                match USER_BLOCK[((y * 5) + x) as usize] {
+                match USER_BLOCK[((y * USER_FX) + x) as usize] {
                     1 => draw_one_block(field_px, field_py, &cyan),
                     2 => draw_one_block(field_px, field_py, &yellow),
                     3 => draw_one_block(field_px, field_py, &green),
@@ -304,8 +306,8 @@ unsafe fn draw_block() {
     }
 
     // ネクストブロックの描画
-    for y in 0..5 {
-        for x in 0..5 {
+    for y in 0..USER_FY {
+        for x in 0..USER_FX {
             match NEXT_BLOCK[((y * 5) + x) as usize] {
                 1 => draw_next_one_block(x, y, &cyan),
                 2 => draw_next_one_block(x, y, &yellow),
@@ -343,9 +345,9 @@ unsafe fn create_block() {
 /// x - 移動先のフィールド上のX座標
 /// y - 移動先のフィールド上のY座標
 unsafe fn can_move(dist_x: i32, dist_y: i32) -> bool {
-    for y in 0..5 {
-        for x in 0..5 {
-            if USER_BLOCK[(y * 5 + x) as usize] > 0 {
+    for y in 0..USER_FY {
+        for x in 0..USER_FX {
+            if USER_BLOCK[(y * USER_FX + x) as usize] > 0 {
                 // フィールドの下端に重なる部分はないか
                 if (dist_y + y - 2) == FIELD_Y {
                     return false;
@@ -374,12 +376,12 @@ unsafe fn can_move(dist_x: i32, dist_y: i32) -> bool {
 
 /// ブロックを固定する
 unsafe fn fix_block() {
-    for y in 0..5 {
-        for x in 0..5 {
-            if USER_BLOCK[y * 5 + x] > 0 {
-                let px = X + (x as i32) - 2;
-                let py = Y + (y as i32) - 2;
-                FIELD[(py * FIELD_X + px) as usize] = USER_BLOCK[y * 5 + x];
+    for y in 0..USER_FY {
+        for x in 0..USER_FX {
+            if USER_BLOCK[(y * USER_FX + x) as usize] > 0 {
+                let px = X + x - 2;
+                let py = Y + y - 2;
+                FIELD[(py * FIELD_X + px) as usize] = USER_BLOCK[(y * USER_FX + x) as usize];
             }
         }
     }
@@ -427,10 +429,10 @@ unsafe fn check_line() -> i32 {
 /// ブロックが画面外に出ていないか確認
 /// Return 画面外にブロックが出ているか判定
 unsafe fn check_over_block() -> bool {
-    for y in 0..5 {
-        for x in 0..5 {
-            if USER_BLOCK[(y * 5 + x) as usize] > 0 {
-                let field_py = Y + y - 2;
+    for y in 0..USER_FY {
+        for x in 0..USER_FX {
+            if USER_BLOCK[(y * USER_FX + x) as usize] > 0 {
+                let field_py: i32 = Y + y - 2;
                 if field_py < 0 {
                     return true;
                 }
@@ -533,15 +535,15 @@ pub unsafe extern "C" fn turn_left() {
     let mut i = 0;
     let mut moved_block = [0; 25];
     // 回転後のブロック位置を取得
-    while i < 25 {
-        moved_block[TURN_LEFT[i]] = clone_block[i];
+    while i < USER_FX * USER_FY {
+        moved_block[TURN_LEFT[i as usize]] = clone_block[i as usize];
         i = i + 1;
     }
     // 回転後の位置に移動可能かチェック
     let mut can_turn = true;
-    for y in 0..5 {
-        for x in 0..5 {
-            if moved_block[(y * 5 + x) as usize] > 0 {
+    for y in 0..USER_FY {
+        for x in 0..USER_FY {
+            if moved_block[(y * USER_FX + x) as usize] > 0 {
                 // フィールドの下端に重なる部分はないか
                 if (Y + y - 2) == FIELD_Y {
                     can_turn = false;
@@ -567,8 +569,8 @@ pub unsafe extern "C" fn turn_left() {
     }
     if can_turn {
         i = 0;
-        while i < 25 {
-            USER_BLOCK[TURN_LEFT[i]] = clone_block[i];
+        while i < USER_FX * USER_FY {
+            USER_BLOCK[TURN_LEFT[i as usize]] = clone_block[i as usize];
             i = i + 1;
         }
     }
@@ -581,8 +583,8 @@ pub unsafe extern "C" fn turn_right() {
     let mut moved_block = [0; 25];
     let mut i = 0;
     // 回転後のブロック位置を取得
-    while i < 25 {
-        moved_block[TURN_RIGHT[i]] = clone_block[i];
+    while i < USER_FX * USER_FY {
+        moved_block[TURN_RIGHT[i as usize]] = clone_block[i as usize];
         i = i + 1;
     }
     // 回転後の位置に移動可能かチェック
@@ -615,8 +617,8 @@ pub unsafe extern "C" fn turn_right() {
     }
     if can_turn {
         i = 0;
-        while i < 25 {
-            USER_BLOCK[TURN_RIGHT[i]] = clone_block[i];
+        while i < USER_FX * USER_FY {
+            USER_BLOCK[TURN_RIGHT[i as usize]] = clone_block[i as usize];
             i = i + 1;
         }
     }
