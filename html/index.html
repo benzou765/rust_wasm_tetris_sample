@@ -13,9 +13,11 @@
     </head>
     <body>
         <canvas id="game" width="640" height="480"></canvas>
+        <div id="game_over" hidden="hidden"><h2>GAME OVER</h2></div>
     </body>
     <script>
         let memory = null;
+        let gameover = false;
         const width = 640;
         const height = 480;
         const rgba = 4;
@@ -29,6 +31,12 @@
                     const textBuf = new Uint8Array(memory.buffer, ptr, size);
                     const message = String.fromCodePoint(...textBuf);
                     console.log(message)
+                },
+                // game_overをwasmから呼び出す準備
+                game_over: () => {
+                    gameOverElement = document.getElementById("game_over");
+                    gameOverElement.removeAttribute("hidden");
+                    gameover = true;
                 }
             }
         };
@@ -93,7 +101,7 @@
             // updateのループ
             let elapsedTime = 0; // 経過時間
             (function update() {
-                requestAnimationFrame( update );
+                const requestId = requestAnimationFrame( update );
                 elapsedTime = getTime() - startTime;
                 // wasm側の更新メソッド
                 exports.update();
@@ -104,6 +112,9 @@
                 // 画面の描画
                 pixels.data.set(imageBuf);
                 context.putImageData(pixels, 0, 0);
+                if (gameover) {
+                    cancelAnimationFrame(requestId);
+                }
             })();
         }
     </script>

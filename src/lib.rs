@@ -58,6 +58,7 @@ const TURN_LEFT: [usize; (USER_FX * USER_FY) as usize] = [
 extern "C" {
     fn js_console_log(ptr: *const u8, size: usize);
     fn random() -> f64;
+    fn game_over();
 }
 
 fn console_log(message: &str) {
@@ -483,7 +484,8 @@ pub unsafe extern "C" fn update() {
             down_block();
         } else {
             if check_over_block() {
-                console_log("GAME OVER")
+                console_log("GAME OVER");
+                game_over();
             } else {
                 fix_block();
                 check_line();
