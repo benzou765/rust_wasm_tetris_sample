@@ -16,7 +16,8 @@ static mut FIELD: &mut [u8] = &mut [0; (FIELD_X * FIELD_Y) as usize];
 static mut ELAPSED_TIME: i32 = 0;
 
 // 現在所有しているブロックの種類
-static mut USER_BLOCK: [u8; 25] = T_BLOCK;
+static mut USER_BLOCK: [u8; 25] = [0; 25];
+static mut NEXT_BLOCK: [u8; 25] = [0; 25];
 static mut X: i32 = 5;
 static mut Y: i32 = 0;
 
@@ -34,10 +35,10 @@ const RN_BLOCK: [u8; 25] = [
     0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 const L_BLOCK: [u8; 25] = [
-    0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 const RL_BLOCK: [u8; 25] = [
-    0, 0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0,
 ];
 const I_BLOCK: [u8; 25] = [
     0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
@@ -99,7 +100,7 @@ unsafe fn draw_rect(sx: i32, sy: i32, dx: i32, dy: i32, color: &Color) {
     }
 }
 
-/// 背景を描画
+/// フィールドの背景を描画
 /// # Arguments
 /// * x, y はフィールドのx, y座標
 unsafe fn draw_back_ground(x: i32, y: i32) {
@@ -120,6 +121,7 @@ unsafe fn draw_back_ground(x: i32, y: i32) {
 /// 1ブロックを描画
 /// # Arguments
 /// * x, y はフィールドのx, y座標
+/// * color - RGBA構造体。色情報を保持
 unsafe fn draw_one_block(x: i32, y: i32, color: &Color) {
     // draw frame
     let gray = Color {
@@ -144,6 +146,52 @@ unsafe fn draw_one_block(x: i32, y: i32, color: &Color) {
     }
 }
 
+/// ネクストブロックの背景を描画
+/// # Arguments
+/// * x, y はフィールドのx, y座標
+unsafe fn draw_next_back_ground(x: i32, y: i32) {
+    let back_color = Color {
+        red: 238,
+        green: 238,
+        blue: 238,
+        alpha: 255,
+    };
+
+    for j in ((y * BLOCK_SIZE) + 20)..((y * BLOCK_SIZE) + BLOCK_SIZE + 20) {
+        for i in ((x * BLOCK_SIZE) + 20)..((x * BLOCK_SIZE) + BLOCK_SIZE + 20) {
+            draw_pixel(i + 240, j, &back_color);
+        }
+    }
+}
+
+/// ネクストブロックの1ブロックを描画
+/// # Arguments
+/// * x, y はネクストフィールドのx, y座標
+/// * color - RGBA構造体。色情報を保持
+unsafe fn draw_next_one_block(x: i32, y: i32, color: &Color) {
+    // draw frame
+    let gray = Color {
+        red: 160,
+        green: 160,
+        blue: 160,
+        alpha: 255,
+    };
+    draw_rect(
+        (x * BLOCK_SIZE) + 260, // 開始位置 * ブロックサイズ + 初期位置
+        (y * BLOCK_SIZE) + 20,
+        (x * BLOCK_SIZE) + BLOCK_SIZE + 259,
+        (y * BLOCK_SIZE) + BLOCK_SIZE + 19,
+        &gray,
+    );
+
+    // draw inner
+    for j in ((y * BLOCK_SIZE) + 21)..((y * BLOCK_SIZE) + BLOCK_SIZE + 19) {
+        for i in ((x * BLOCK_SIZE) + 21)..((x * BLOCK_SIZE) + BLOCK_SIZE + 19) {
+            draw_pixel(i + 240, j, color);
+        }
+    }
+}
+
 /// ゲームの外枠を描画
 unsafe fn draw_frame() {
     let black = Color {
@@ -157,6 +205,13 @@ unsafe fn draw_frame() {
     for j in 0..FIELD_Y {
         for i in 0..FIELD_X {
             draw_back_ground(i, j);
+        }
+    }
+    // ネクストブロックの枠描画
+    draw_rect(259, 19, 370, 130, &black);
+    for j in 0..5 {
+        for i in 0..5 {
+            draw_next_back_ground(i, j);
         }
     }
 }
@@ -213,27 +268,23 @@ unsafe fn draw_block() {
         alpha: 255,
     };
     // ユーザーのブロックを描画
-    let mut y = 0;
-    for y2 in (Y - 2)..(Y + 3) {
-        let mut x = 0;
-        if 0 <= y2 && y2 < FIELD_Y {
-            for x2 in (X - 2)..(X + 3) {
-                if 0 <= x2 && x2 < FIELD_X {
-                    match USER_BLOCK[((y * 5) + x) as usize] {
-                        1 => draw_one_block(x2, y2, &cyan),
-                        2 => draw_one_block(x2, y2, &yellow),
-                        3 => draw_one_block(x2, y2, &green),
-                        4 => draw_one_block(x2, y2, &red),
-                        5 => draw_one_block(x2, y2, &blue),
-                        6 => draw_one_block(x2, y2, &orange),
-                        7 => draw_one_block(x2, y2, &magenta),
-                        _ => {}
-                    }
+    for y in 0..5 {
+        for x in 0..5 {
+            let field_px = X + x - 2;
+            let field_py = Y + y - 2;
+            if 0 <= field_px && field_px < FIELD_X && 0 <= field_py && field_py < FIELD_Y {
+                match USER_BLOCK[((y * 5) + x) as usize] {
+                    1 => draw_one_block(field_px, field_py, &cyan),
+                    2 => draw_one_block(field_px, field_py, &yellow),
+                    3 => draw_one_block(field_px, field_py, &green),
+                    4 => draw_one_block(field_px, field_py, &red),
+                    5 => draw_one_block(field_px, field_py, &blue),
+                    6 => draw_one_block(field_px, field_py, &orange),
+                    7 => draw_one_block(field_px, field_py, &magenta),
+                    _ => {}
                 }
-                x = x + 1;
             }
         }
-        y = y + 1;
     }
 
     // フィールド上のブロックを描画
@@ -251,19 +302,36 @@ unsafe fn draw_block() {
             }
         }
     }
+
+    // ネクストブロックの描画
+    for y in 0..5 {
+        for x in 0..5 {
+            match NEXT_BLOCK[((y * 5) + x) as usize] {
+                1 => draw_next_one_block(x, y, &cyan),
+                2 => draw_next_one_block(x, y, &yellow),
+                3 => draw_next_one_block(x, y, &green),
+                4 => draw_next_one_block(x, y, &red),
+                5 => draw_next_one_block(x, y, &blue),
+                6 => draw_next_one_block(x, y, &orange),
+                7 => draw_next_one_block(x, y, &magenta),
+                _ => {}
+            }
+        }
+    }
 }
 
 /// 初期ブロックの生成
 unsafe fn create_block() {
+    USER_BLOCK = NEXT_BLOCK.clone();
     let val = (random() * BLOCK_TYPE_NUM as f64).floor() as i32;
     match val {
-        1 => USER_BLOCK = O_BLOCK,
-        2 => USER_BLOCK = N_BLOCK,
-        3 => USER_BLOCK = RN_BLOCK,
-        4 => USER_BLOCK = L_BLOCK,
-        5 => USER_BLOCK = RL_BLOCK,
-        6 => USER_BLOCK = I_BLOCK,
-        _ => USER_BLOCK = T_BLOCK,
+        1 => NEXT_BLOCK = O_BLOCK,
+        2 => NEXT_BLOCK = N_BLOCK,
+        3 => NEXT_BLOCK = RN_BLOCK,
+        4 => NEXT_BLOCK = L_BLOCK,
+        5 => NEXT_BLOCK = RL_BLOCK,
+        6 => NEXT_BLOCK = I_BLOCK,
+        _ => NEXT_BLOCK = T_BLOCK,
     }
     // 座標の初期化
     X = 5;
@@ -391,6 +459,16 @@ pub unsafe extern "C" fn init() {
     console_log("called init method");
     // draw first view
     draw_frame();
+    let val = (random() * BLOCK_TYPE_NUM as f64).floor() as i32;
+    match val {
+        1 => NEXT_BLOCK = O_BLOCK,
+        2 => NEXT_BLOCK = N_BLOCK,
+        3 => NEXT_BLOCK = RN_BLOCK,
+        4 => NEXT_BLOCK = L_BLOCK,
+        5 => NEXT_BLOCK = RL_BLOCK,
+        6 => NEXT_BLOCK = I_BLOCK,
+        _ => NEXT_BLOCK = T_BLOCK,
+    }
     create_block();
 }
 
