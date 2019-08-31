@@ -32,7 +32,7 @@ canvasの関数をrustから呼び出すことは難しそう？なので、自�
 NEXTは1つ
 スコアは6桁
 
-# 実装メモ
+## 実装メモ
 * webassemblyの場合、ヒープは使用できない？
 BoxもVecもエラーを吐いた。使い方がよくわかっていない感じ。とりあえず、スタックのみで実装する。
 そもそも、static mutを使った実装に問題がありそう。ちゃんとメモリ確保してから操作したほうが良さそう。
@@ -49,7 +49,7 @@ rust側にconsole_logメソッドを作成したが、js側でエラーが出力
 チュートリアルを軽く読んだだけで実装したので、rustの利点を活かしきれていない。
 何かの機会で改めて見直す。
 
-# 参考資料
+## 参考資料
 * RustでWebAssemblyを扱う方法  
 http://nmi.jp/2018-03-19-WebAssembly-with-Rust  
 * jsのrequestAnimationFrameの扱い方
@@ -61,6 +61,6 @@ https://github.com/aochagavia/rocket
 * Minecraft4kRust
 https://github.com/tkihira/Minecraft4kRust
 
-# ループについて
+## ループについて
 rustではforよりも、whileやloopを使ったほうがよいことがある。
 https://qiita.com/aimof/items/8e710f928c1ffbb1faf0
