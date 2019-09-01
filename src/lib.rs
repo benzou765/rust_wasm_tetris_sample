@@ -23,6 +23,8 @@ static mut FIELD: &mut [u8] = &mut [0; (FIELD_X * FIELD_Y) as usize];
 static mut ELAPSED_TIME: i32 = 0;
 // スコアを表す値
 static mut SCORE: i32 = 0;
+// 落下時間
+static mut FALL_TIME: i32 = 60;
 
 // 現在所有しているブロックの種類
 static mut USER_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [0; (USER_FX * USER_FY) as usize];
@@ -344,6 +346,20 @@ unsafe fn create_block() {
         6 => NEXT_BLOCK = I_BLOCK,
         _ => NEXT_BLOCK = T_BLOCK,
     }
+    let score = (SCORE / 100) % 10;
+    match score {
+        0 => FALL_TIME = 60,
+        1 => FALL_TIME = 54,
+        2 => FALL_TIME = 48,
+        3 => FALL_TIME = 42,
+        4 => FALL_TIME = 36,
+        5 => FALL_TIME = 30,
+        6 => FALL_TIME = 24,
+        7 => FALL_TIME = 18,
+        8 => FALL_TIME = 12,
+        9 => FALL_TIME =  6,
+        _ => {}
+    }
     // 座標の初期化
     X = 5;
     Y = 0;
@@ -494,7 +510,7 @@ pub unsafe extern "C" fn init() {
 #[no_mangle]
 pub unsafe extern "C" fn update() {
     ELAPSED_TIME = ELAPSED_TIME + 1;
-    if ELAPSED_TIME % 60 == 0 {
+    if ELAPSED_TIME % FALL_TIME == 0 {
         if can_move(X, Y + 1) {
             down_block();
         } else {
