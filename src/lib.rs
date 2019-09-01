@@ -9,6 +9,11 @@ const FIELD_Y: i32 = 20;
 const BLOCK_TYPE_NUM: i32 = 7;
 const USER_FX: i32 = 5;
 const USER_FY: i32 = 5;
+const DOWN_SCORE: i32 = 1;
+const CLEAR_LINE_1: i32 = 10;
+const CLEAR_LINE_2: i32 = 20;
+const CLEAR_LINE_3: i32 = 40;
+const CLEAR_LINE_4: i32 = 80;
 
 // イメージを保存するメモリ
 static mut IMAGE_BUFFER: &mut [u8] = &mut [0; (WIDTH * HEIGHT * RGBA) as usize];
@@ -16,6 +21,8 @@ static mut IMAGE_BUFFER: &mut [u8] = &mut [0; (WIDTH * HEIGHT * RGBA) as usize];
 static mut FIELD: &mut [u8] = &mut [0; (FIELD_X * FIELD_Y) as usize];
 // 経過時間を表す値
 static mut ELAPSED_TIME: i32 = 0;
+// スコアを表す値
+static mut SCORE: i32 = 0;
 
 // 現在所有しているブロックの種類
 static mut USER_BLOCK: [u8; (USER_FX * USER_FY) as usize] = [0; (USER_FX * USER_FY) as usize];
@@ -58,7 +65,8 @@ const TURN_LEFT: [usize; (USER_FX * USER_FY) as usize] = [
 extern "C" {
     fn js_console_log(ptr: *const u8, size: usize);
     fn random() -> f64;
-    fn game_over();
+    fn draw_game_over();
+    fn draw_score(score: i32);
 }
 
 fn console_log(message: &str) {
@@ -424,6 +432,13 @@ unsafe fn check_line() -> i32 {
             clear_num = clear_num + 1;
         }
     }
+    match clear_num {
+        1 => SCORE = SCORE + CLEAR_LINE_1,
+        2 => SCORE = SCORE + CLEAR_LINE_2,
+        3 => SCORE = SCORE + CLEAR_LINE_3,
+        4 => SCORE = SCORE + CLEAR_LINE_4,
+        _ => {}
+    }
     clear_num
 }
 
@@ -485,7 +500,7 @@ pub unsafe extern "C" fn update() {
         } else {
             if check_over_block() {
                 console_log("GAME OVER");
-                game_over();
+                draw_game_over();
             } else {
                 fix_block();
                 check_line();
@@ -495,6 +510,12 @@ pub unsafe extern "C" fn update() {
     }
     draw_frame();
     draw_block();
+}
+
+/// スコアを表示させる
+#[no_mangle]
+pub unsafe extern "C" fn get_score() {
+    draw_score(SCORE);
 }
 
 /// block move left
@@ -518,10 +539,12 @@ pub unsafe extern "C" fn move_right() {
 #[no_mangle]
 pub unsafe extern "C" fn move_down() {
     if can_move(X, Y + 1) {
+        SCORE = SCORE + DOWN_SCORE;
         down_block();
     } else {
         if check_over_block() {
-            console_log("GAME OVER")
+            console_log("GAME OVER");
+            draw_game_over();
         } else {
             fix_block();
             check_line();

@@ -12,8 +12,8 @@
         </style>
     </head>
     <body>
-        <canvas id="game" width="640" height="480"></canvas>
         <div id="game_over" hidden="hidden"><h2>GAME OVER</h2></div>
+        <canvas id="game" width="640" height="480"></canvas>
     </body>
     <script>
         let memory = null;
@@ -21,6 +21,8 @@
         const width = 640;
         const height = 480;
         const rgba = 4;
+        // canvasのcontextを取得
+        const context = document.getElementById("game").getContext("2d");
         const imports = {
             env: {
                 // jsの乱数をwasmから呼び出す準備
@@ -33,10 +35,16 @@
                     console.log(message)
                 },
                 // game_overをwasmから呼び出す準備
-                game_over: () => {
+                draw_game_over: () => {
                     gameOverElement = document.getElementById("game_over");
                     gameOverElement.removeAttribute("hidden");
                     gameover = true;
+                },
+                // スコア表示をwasmから呼び出す準備
+                draw_score: (score) => {
+                    let scorePadding = ('000000' + score).slice(-6);
+                    context.font = "16px 'Arial'"
+                    context.fillText("SCORE:" + scorePadding, 260, 420);
                 }
             }
         };
@@ -73,8 +81,6 @@
             // wasm側のメモリの場所
             memory = exports.memory;
 
-            // canvasのcontextを取得
-            const context = document.getElementById("game").getContext("2d");
             // wasmで生成したイメージの出力先
             const pixels = context.createImageData(width, height);
 
@@ -112,6 +118,7 @@
                 // 画面の描画
                 pixels.data.set(imageBuf);
                 context.putImageData(pixels, 0, 0);
+                exports.get_score();
                 if (gameover) {
                     cancelAnimationFrame(requestId);
                 }
